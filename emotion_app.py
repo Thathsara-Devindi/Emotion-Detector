@@ -2,8 +2,47 @@ import cv2
 from deepface import DeepFace
 import os
 from datetime import datetime
+import pyttsx3
+import time
 
-# 1. Path Fix
+#Audio Engine Initialize
+engine = pyttsx3.init()
+last_spoken_time = 0  # Anthimata katha karapu welawa mathaka thiyaganna
+cooldown_seconds = 60 # Winadiyakata eka parak vithrk katha karanna (nethnam katha karala iwarayak wenne na)
+
+def speak_emotion(emotion):
+    global last_spoken_time
+    current_time = time.time()
+    
+    # Cooldown eka iwara nam pamanak katha karanna
+    if current_time - last_spoken_time > cooldown_seconds:
+        if emotion == 'happy':
+            engine.say("Keep smiling!")
+        elif emotion == 'angry':
+            engine.say("Relax, take a deep breath")
+        elif emotion == 'sad':
+            engine.say("Don't be sad, everything will be fine")
+        
+        engine.runAndWait()
+        last_spoken_time = current_time
+
+        def speak_emotion(emotion):
+    global last_spoken_time
+    current_time = time.time()
+    
+    if current_time - last_spoken_time > cooldown_seconds:
+        print(f"DEBUG: Trying to speak for emotion: {emotion}") # Meka danna
+        if emotion == 'happy':
+            engine.say("Keep smiling!")
+        elif emotion == 'angry':
+            engine.say("Relax, take a deep breath")
+        elif emotion == 'sad':
+            engine.say("Don't be sad, everything will be fine")
+        
+        engine.runAndWait()
+        last_spoken_time = current_time
+
+# 2. Path Fix
 base_path = os.path.dirname(os.path.abspath(__file__))
 emojis_folder = os.path.join(base_path, "emojis")
 
@@ -45,30 +84,28 @@ while True:
             dominant_emotion = face['dominant_emotion']
             accuracy = face['emotion'][dominant_emotion]
 
+            # Voice Feedback call kirima
+            speak_emotion(dominant_emotion)
+
             # UI Improvements
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             cv2.putText(frame, f"{dominant_emotion} ({accuracy:.1f}%)", (x, y - 10), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
-            # Emoji Overlay Logic (More Robust)
+            # Emoji Overlay Logic
             if dominant_emotion in emojis:
                 emoji_img = emojis[dominant_emotion]
-                
-                # Emoji size (40%)
                 e_sz = int(w * 0.4)
                 emoji_resized = cv2.resize(emoji_img, (e_sz, e_sz))
 
-                # Overlay location: Muna box eka athulema uda corner eke
-                # Frame eken pita yanne nathuwa ROI eka hadagamu
                 y_offset = y + 5
                 x_offset = x + 5
 
-                if emoji_resized.shape[2] == 4: # PNG eka transparent nam
+                if emoji_resized.shape[2] == 4:
                     b, g, r, a = cv2.split(emoji_resized)
                     overlay = cv2.merge((b, g, r))
                     mask = cv2.merge((a, a, a))
 
-                    # Frame eka athule ROI eka checking
                     if y_offset + e_sz < frame.shape[0] and x_offset + e_sz < frame.shape[1]:
                         roi = frame[y_offset:y_offset+e_sz, x_offset:x_offset+e_sz]
                         bg = cv2.bitwise_and(roi, cv2.bitwise_not(mask))
